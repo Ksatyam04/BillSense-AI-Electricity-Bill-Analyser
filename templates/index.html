@@ -1,0 +1,1357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>BillSense AI — Smart Electricity Bill Analyser</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700;9..40,800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@9.1.0/marked.min.js"></script>
+<style>
+:root{
+  --bg:#080B17;--bg2:#0C0F1E;--card:rgba(255,255,255,0.032);--inp:rgba(255,255,255,0.055);
+  --pr:#FF6B35;--prd:rgba(255,107,53,0.13);--prd2:rgba(255,107,53,0.06);
+  --te:#00D4AA;--ted:rgba(0,212,170,0.11);
+  --bl:#4A90E2;--bld:rgba(74,144,226,0.11);
+  --pu:#9B59B6;--pud:rgba(155,89,182,0.11);
+  --am:#F59E0B;--amd:rgba(245,158,11,0.11);
+  --tx:#F0F2F8;--mu:#6B7A99;--dm:#3A485F;
+  --bo:rgba(255,255,255,0.07);--boh:rgba(255,255,255,0.13);
+  --da:#EF4444;--font:'DM Sans',sans-serif;--mono:'DM Mono',monospace;
+  --r:12px;--rl:18px;--sw:264px;--ease:all .2s ease;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{font-size:16px;scroll-behavior:smooth}
+body{font-family:var(--font);background:var(--bg);color:var(--tx);min-height:100vh;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+a{text-decoration:none;color:inherit}
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--bo);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,0.14)}
+
+/* Layout */
+.shell{display:flex;min-height:100vh}
+.sidebar{width:var(--sw);background:var(--bg2);border-right:1px solid var(--bo);display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;overflow-y:auto}
+.main{margin-left:var(--sw);flex:1;min-height:100vh;padding:28px 32px;max-width:calc(100vw - var(--sw))}
+
+/* Sidebar */
+.sb-top{padding:20px 16px 16px;border-bottom:1px solid var(--bo)}
+.logo-row{display:flex;align-items:center;gap:10px}
+.logo-icon{width:36px;height:36px;background:linear-gradient(135deg,var(--pr),#FF9060);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;box-shadow:0 0 22px rgba(255,107,53,.32);flex-shrink:0}
+.logo-name{font-size:1.15rem;font-weight:800;letter-spacing:-.4px}
+.logo-name em{color:var(--pr);font-style:normal}
+.logo-badge{display:inline-flex;align-items:center;gap:4px;font-size:.58rem;font-weight:700;letter-spacing:.8px;text-transform:uppercase;color:var(--pr);background:var(--prd);padding:2px 7px;border-radius:20px;margin-top:3px}
+.sb-nav{padding:12px 8px;flex:1}
+.nav-sec{font-size:.57rem;font-weight:700;letter-spacing:1.9px;color:var(--dm);text-transform:uppercase;padding:0 8px;margin:14px 0 4px}
+.nav-item{display:flex;align-items:center;gap:9px;padding:8px 10px;border-radius:8px;cursor:pointer;color:var(--mu);font-size:.845rem;font-weight:500;transition:var(--ease);border:1px solid transparent;margin-bottom:1px;user-select:none}
+.nav-item:hover{background:rgba(255,255,255,.04);color:var(--tx)}
+.nav-item.active{background:var(--prd);color:var(--pr);border-color:rgba(255,107,53,.18)}
+.nav-item .ni{width:18px;text-align:center;font-size:.9rem}
+.nav-item .badge{margin-left:auto;font-size:.6rem;font-weight:700;padding:1px 6px;border-radius:20px;background:var(--pr);color:#fff}
+.sb-foot{padding:12px 14px;border-top:1px solid var(--bo)}
+.sb-foot label{font-size:.65rem;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;display:block;margin-bottom:5px}
+.api-in{width:100%;background:var(--inp);border:1px solid var(--bo);border-radius:8px;padding:8px 10px;color:var(--tx);font-size:.76rem;font-family:var(--mono);outline:none;transition:var(--ease)}
+.api-in:focus{border-color:rgba(255,107,53,.45);background:rgba(255,255,255,.08)}
+.api-hint{font-size:.61rem;color:var(--dm);margin-top:4px;line-height:1.5}
+.api-hint a{color:var(--pr)}
+.api-ok{display:none;align-items:center;gap:4px;font-size:.65rem;margin-top:5px;padding:3px 8px;border-radius:20px;background:var(--ted);color:var(--te)}
+.api-ok.on{display:inline-flex}
+.api-warn{display:none;font-size:.62rem;color:var(--am);margin-top:4px;padding:3px 8px;background:var(--amd);border-radius:6px}
+.api-warn.on{display:block}
+
+/* Page header */
+.ph{margin-bottom:22px}
+.ph-row{display:flex;justify-content:space-between;align-items:flex-start;gap:16px}
+.ph-title{font-size:1.48rem;font-weight:800;letter-spacing:-.5px}
+.ph-sub{font-size:.845rem;color:var(--mu);margin-top:3px}
+.ph-actions{display:flex;gap:8px;flex-shrink:0}
+
+/* Panels */
+.panel{display:none}
+.panel.active{display:block;animation:fi .28s ease}
+@keyframes fi{from{opacity:0;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+
+/* KPI Grid */
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(205px,1fr));gap:14px;margin-bottom:18px}
+.kpi{position:relative;background:var(--card);backdrop-filter:blur(12px);border:1px solid var(--bo);border-radius:var(--rl);padding:17px 17px 13px;overflow:hidden;transition:transform .2s ease,box-shadow .2s ease;cursor:default}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;border-radius:var(--rl) var(--rl) 0 0}
+.kpi::after{content:'';position:absolute;top:0;left:0;width:3px;height:100%;border-radius:var(--rl) 0 0 var(--rl)}
+.kpi:hover{transform:translateY(-3px)}
+.kpi-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:9px}
+.kpi-ico{width:33px;height:33px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:.95rem;flex-shrink:0}
+.kpi-lbl{font-size:.61rem;font-weight:700;letter-spacing:1.3px;text-transform:uppercase;color:var(--mu);margin-bottom:3px}
+.kpi-val{font-size:1.68rem;font-weight:800;letter-spacing:-1px;line-height:1}
+.kpi-sub{font-size:.68rem;color:var(--mu);margin-top:2px}
+.kpi-delta{display:inline-flex;align-items:center;gap:3px;font-size:.67rem;font-weight:700;padding:2px 8px;border-radius:20px;margin-top:8px}
+.kpi-delta.up{background:rgba(239,68,68,.14);color:#F87171}
+.kpi-delta.down{background:rgba(0,212,170,.13);color:var(--te)}
+.kpi-delta.neu{background:rgba(107,122,153,.13);color:var(--mu)}
+.ku::before{background:linear-gradient(90deg,var(--pr),transparent)}.ku::after{background:var(--pr)}.ku:hover{box-shadow:0 8px 28px rgba(255,107,53,.17)}.ku .kpi-val{color:var(--pr)}.ku .kpi-ico{background:var(--prd)}
+.ka::before{background:linear-gradient(90deg,var(--te),transparent)}.ka::after{background:var(--te)}.ka:hover{box-shadow:0 8px 28px rgba(0,212,170,.17)}.ka .kpi-val{color:var(--te)}.ka .kpi-ico{background:var(--ted)}
+.kr::before{background:linear-gradient(90deg,var(--bl),transparent)}.kr::after{background:var(--bl)}.kr:hover{box-shadow:0 8px 28px rgba(74,144,226,.17)}.kr .kpi-val{color:var(--bl)}.kr .kpi-ico{background:var(--bld)}
+.kd::before{background:linear-gradient(90deg,var(--pu),transparent)}.kd::after{background:var(--pu)}.kd:hover{box-shadow:0 8px 28px rgba(155,89,182,.17)}.kd .kpi-val{color:var(--pu);font-size:1rem;letter-spacing:-.1px}.kd .kpi-ico{background:var(--pud)}
+.kc::before{background:linear-gradient(90deg,var(--am),transparent)}.kc::after{background:var(--am)}.kc:hover{box-shadow:0 8px 28px rgba(245,158,11,.17)}.kc .kpi-val{color:var(--am)}.kc .kpi-ico{background:var(--amd)}
+
+/* Card */
+.card{background:var(--card);backdrop-filter:blur(10px);border:1px solid var(--bo);border-radius:var(--rl);padding:20px;margin-bottom:16px}
+.ch{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.ct{font-size:.9rem;font-weight:600;display:flex;align-items:center;gap:8px}
+.ci{width:23px;height:23px;border-radius:5px;background:var(--prd);display:flex;align-items:center;justify-content:center;font-size:.7rem}
+
+/* Grids */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+
+/* Forms */
+.fg{margin-bottom:12px}
+.fl{display:block;font-size:.69rem;font-weight:600;color:var(--mu);margin-bottom:5px;text-transform:uppercase;letter-spacing:.5px}
+.fc{width:100%;background:var(--inp);border:1px solid var(--bo);border-radius:var(--r);padding:9px 12px;color:var(--tx);font-family:var(--font);font-size:.88rem;outline:none;transition:var(--ease);appearance:none}
+.fc:focus{border-color:rgba(255,107,53,.45);background:rgba(255,255,255,.08);box-shadow:0 0 0 3px rgba(255,107,53,.07)}
+.fc::placeholder{color:var(--dm)}
+select.fc{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7A99' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 11px center;padding-right:32px;cursor:pointer}
+select.fc option{background:#141828;color:var(--tx)}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 17px;border-radius:var(--r);font-family:var(--font);font-size:.845rem;font-weight:600;cursor:pointer;transition:var(--ease);border:none;outline:none;white-space:nowrap}
+.btn-p{background:linear-gradient(135deg,var(--pr),#FF9060);color:#fff;box-shadow:0 4px 14px rgba(255,107,53,.28)}
+.btn-p:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(255,107,53,.4)}
+.btn-t{background:var(--ted);color:var(--te);border:1px solid rgba(0,212,170,.2)}
+.btn-t:hover{background:rgba(0,212,170,.2)}
+.btn-b{background:var(--bld);color:var(--bl);border:1px solid rgba(74,144,226,.2)}
+.btn-b:hover{background:rgba(74,144,226,.2)}
+.btn-g{background:transparent;color:var(--mu);border:1px solid var(--bo)}
+.btn-g:hover{background:rgba(255,255,255,.05);color:var(--tx)}
+.btn-sm{padding:5px 12px;font-size:.77rem}
+.btn-xs{padding:3px 9px;font-size:.71rem}
+.btn:disabled{opacity:.42;cursor:not-allowed;transform:none!important}
+
+/* Alerts */
+.alert{padding:11px 14px;border-radius:var(--r);border-left:3px solid;margin-bottom:13px;font-size:.845rem;line-height:1.55}
+.a-s{background:rgba(0,212,170,.07);border-color:var(--te);color:#4EFFD0}
+.a-w{background:rgba(245,158,11,.07);border-color:var(--am);color:#FCD34D}
+.a-d{background:rgba(239,68,68,.07);border-color:var(--da);color:#FCA5A5}
+.a-i{background:rgba(74,144,226,.07);border-color:var(--bl);color:#93C5FD}
+.at{font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:5px}
+
+/* Upload zone */
+.uz{border:2px dashed var(--bo);border-radius:var(--rl);padding:40px 20px;text-align:center;cursor:pointer;transition:var(--ease);position:relative;background:rgba(255,255,255,.01)}
+.uz:hover,.uz.drag{border-color:rgba(255,107,53,.4);background:rgba(255,107,53,.04)}
+.uz-icon{font-size:2.2rem;margin-bottom:8px;opacity:.55}
+.uz-title{font-size:.9rem;font-weight:600;margin-bottom:3px}
+.uz-sub{font-size:.76rem;color:var(--mu)}
+.uz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+
+/* Confidence bar */
+.cb-wrap{margin:8px 0}
+.cb-lbl{display:flex;justify-content:space-between;font-size:.71rem;color:var(--mu);margin-bottom:4px}
+.cb{height:5px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+.cb-fill{height:100%;border-radius:3px;transition:width .6s ease}
+
+/* Tables */
+.tbl{width:100%;border-collapse:collapse;font-size:.83rem}
+.tbl th{text-align:left;padding:8px 12px;font-size:.62rem;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--mu);border-bottom:1px solid var(--bo)}
+.tbl td{padding:9px 12px;border-bottom:1px solid rgba(255,255,255,.03);color:var(--tx)}
+.tbl tr:last-child td{border-bottom:none}
+.tbl tr:hover td{background:rgba(255,255,255,.025)}
+.cur-slab td{background:rgba(255,107,53,.05)!important}.cur-slab td:first-child{border-left:2px solid var(--pr)}
+
+/* Stat rows */
+.sr{display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.sr:last-child{border-bottom:none}
+.sl{font-size:.83rem;color:var(--mu)}.sv{font-size:.86rem;font-weight:600}
+
+/* Pills */
+.pill{display:inline-flex;align-items:center;padding:2px 8px;border-radius:20px;font-size:.67rem;font-weight:700}
+.pp{background:var(--prd);color:var(--pr)}.ps{background:var(--ted);color:var(--te)}.pb{background:var(--bld);color:var(--bl)}.pw{background:var(--amd);color:var(--am)}.pd{background:rgba(239,68,68,.12);color:var(--da)}
+
+/* Donut legend */
+.dl{display:flex;flex-direction:column;gap:8px}
+.di{display:flex;align-items:center;gap:8px}
+.dd{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dn{font-size:.78rem;color:var(--mu);flex:1}
+.dv{font-size:.83rem;font-weight:600}
+
+/* AI Box */
+.ai-box{background:linear-gradient(135deg,rgba(0,212,170,.04),rgba(74,144,226,.04));border:1px solid rgba(0,212,170,.18);border-radius:var(--rl);padding:16px;margin-top:13px}
+.ai-hd{display:flex;align-items:center;gap:7px;margin-bottom:11px;font-size:.69rem;font-weight:700;color:var(--te);text-transform:uppercase;letter-spacing:.9px}
+.ai-loading{display:flex;align-items:center;gap:10px;color:var(--mu);font-size:.84rem}
+
+/* Markdown */
+.md h1,.md h2,.md h3{color:var(--te);margin:11px 0 5px;font-size:.9rem}
+.md p{margin:4px 0;line-height:1.65;font-size:.865rem}
+.md ul,.md ol{padding-left:16px;margin:4px 0}
+.md li{margin:3px 0;font-size:.85rem;line-height:1.55}
+.md strong{color:var(--tx)}
+.md code{background:rgba(255,255,255,.08);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:.79rem}
+.md a{color:var(--pr)}
+.md blockquote{border-left:2px solid var(--pr);padding-left:12px;color:var(--mu);margin:8px 0}
+
+/* Spinner */
+.spin{width:18px;height:18px;border:2px solid rgba(255,107,53,.2);border-top-color:var(--pr);border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle}
+@keyframes spin{to{transform:rotate(360deg)}}
+.lov{display:none;position:fixed;inset:0;background:rgba(8,11,23,.75);backdrop-filter:blur(5px);z-index:9999;align-items:center;justify-content:center;flex-direction:column;gap:12px}
+.lov.on{display:flex}
+.lov .spin{width:32px;height:32px;border-width:3px}
+.lov-t{font-size:.845rem;color:var(--mu)}
+
+/* Toasts */
+#toasts{position:fixed;bottom:18px;right:18px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{padding:10px 14px;border-radius:var(--r);background:#1A2240;border:1px solid var(--bo);border-left:3px solid var(--pr);color:var(--tx);font-size:.845rem;box-shadow:0 8px 24px rgba(0,0,0,.4);animation:tIn .2s ease;max-width:300px}
+.toast.ok{border-left-color:var(--te)}.toast.err{border-left-color:var(--da)}.toast.warn{border-left-color:var(--am)}
+@keyframes tIn{from{opacity:0;transform:translateX(16px)}to{opacity:1}}
+@keyframes tOut{from{opacity:1}to{opacity:0;transform:translateX(16px)}}
+
+/* Chat */
+.chat-wrap{display:flex;flex-direction:column;height:500px}
+.chat-msgs{flex:1;overflow-y:auto;padding:13px;display:flex;flex-direction:column;gap:10px;background:rgba(0,0,0,.22);border-radius:var(--r);border:1px solid var(--bo);margin-bottom:12px}
+.chat-msgs::-webkit-scrollbar{width:3px}
+.chat-msgs::-webkit-scrollbar-thumb{background:var(--bo);border-radius:2px}
+.msg{max-width:88%}
+.msg.u{align-self:flex-end}.msg.a{align-self:flex-start}
+.bubble{padding:10px 14px;border-radius:13px;font-size:.865rem;line-height:1.55}
+.msg.u .bubble{background:linear-gradient(135deg,var(--pr),#FF9060);color:#fff;border-radius:13px 13px 3px 13px}
+.msg.a .bubble{background:rgba(255,255,255,.05);border:1px solid var(--bo);color:var(--tx);border-radius:13px 13px 13px 3px}
+.msg.a .bubble h1,.msg.a .bubble h2,.msg.a .bubble h3{font-size:.88rem;margin:7px 0 3px;color:var(--te)}
+.msg.a .bubble p{margin:3px 0}.msg.a .bubble ul,.msg.a .bubble ol{padding-left:15px}
+.msg.a .bubble strong{color:var(--tx)}.msg.a .bubble a{color:var(--pr)}
+.msg-t{font-size:.6rem;color:var(--dm);margin-top:3px;padding:0 3px}
+.msg.u .msg-t{text-align:right}
+.chat-row{display:flex;gap:8px;align-items:flex-end}
+.chat-in{flex:1;background:var(--inp);border:1px solid var(--bo);border-radius:var(--r);padding:9px 12px;color:var(--tx);font-family:var(--font);font-size:.88rem;outline:none;resize:none;min-height:42px;max-height:120px;transition:var(--ease)}
+.chat-in:focus{border-color:rgba(255,107,53,.4)}
+.qp{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:11px}
+.qb{padding:5px 11px;border-radius:20px;font-size:.7rem;font-weight:500;cursor:pointer;transition:var(--ease);border:1px solid var(--bo);background:rgba(255,255,255,.03);color:var(--mu);font-family:var(--font)}
+.qb:hover{border-color:rgba(255,107,53,.3);color:var(--pr);background:var(--prd)}
+
+/* Method toggle */
+.mt{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:18px}
+.mc{padding:13px;border-radius:var(--r);border:2px solid var(--bo);cursor:pointer;text-align:center;transition:var(--ease)}
+.mc:hover,.mc.active{border-color:rgba(255,107,53,.38);background:var(--prd)}
+.mc.active{border-color:var(--pr)}
+.mc-icon{font-size:1.3rem;margin-bottom:4px}
+.mc-t{font-size:.83rem;font-weight:600}
+.mc-s{font-size:.68rem;color:var(--mu);margin-top:1px}
+
+/* Range */
+input[type=range]{-webkit-appearance:none;width:100%;height:4px;border-radius:2px;background:rgba(255,255,255,.1);outline:none;cursor:pointer;margin-top:5px}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:18px;height:18px;border-radius:50%;background:var(--pr);box-shadow:0 0 8px rgba(255,107,53,.45);cursor:grab}
+input[type=range]::-webkit-slider-thumb:active{cursor:grabbing}
+
+/* Empty state */
+.empty{text-align:center;padding:40px 20px;color:var(--mu)}
+.ei{font-size:2.6rem;opacity:.28;margin-bottom:10px}
+.et{font-size:.94rem;font-weight:600;color:var(--tx);margin-bottom:4px}
+.es{font-size:.83rem}
+
+/* Heatmap */
+.hm{display:grid;gap:3px;margin-top:9px}
+.hm-cell{height:28px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:.59rem;color:rgba(255,255,255,.75);font-weight:600;cursor:default;transition:filter .1s}
+.hm-cell:hover{filter:brightness(1.3)}
+
+/* Appliance item */
+.app-item{display:flex;align-items:center;gap:10px;padding:9px 12px;background:rgba(255,255,255,.03);border:1px solid var(--bo);border-radius:var(--r);margin-bottom:7px;transition:var(--ease)}
+.app-item:hover{border-color:var(--boh)}
+.app-icon-wrap{width:32px;height:32px;border-radius:7px;background:var(--bld);display:flex;align-items:center;justify-content:center;font-size:.9rem;flex-shrink:0}
+.app-info{flex:1;min-width:0}
+.app-name{font-size:.84rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.app-detail{font-size:.7rem;color:var(--mu);margin-top:1px}
+.app-kwh{font-size:.84rem;font-weight:700;color:var(--bl);flex-shrink:0}
+.app-cost{font-size:.72rem;color:var(--mu);flex-shrink:0}
+
+/* Forecast card */
+.fc-card{padding:14px;background:rgba(255,255,255,.03);border:1px solid var(--bo);border-radius:var(--r);text-align:center}
+.fc-month{font-size:.69rem;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin-bottom:5px}
+.fc-units{font-size:1.6rem;font-weight:800;color:var(--bl);letter-spacing:-1px}
+.fc-amount{font-size:.83rem;color:var(--te);margin-top:2px}
+.fc-conf{font-size:.67rem;color:var(--mu);margin-top:5px}
+.fc-reason{font-size:.72rem;color:var(--dm);margin-top:3px;line-height:1.4}
+
+/* Schedule item */
+.sched-item{display:flex;align-items:flex-start;gap:11px;padding:11px;background:rgba(255,255,255,.025);border:1px solid var(--bo);border-radius:var(--r);margin-bottom:8px}
+.sched-time{font-size:.72rem;font-weight:700;color:var(--pr);background:var(--prd);padding:3px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;margin-top:1px}
+.sched-info{flex:1}
+.sched-name{font-size:.86rem;font-weight:600}
+.sched-reason{font-size:.74rem;color:var(--mu);margin-top:2px}
+.sched-saving{font-size:.72rem;color:var(--te);margin-top:3px;font-weight:600}
+
+/* Tab bar */
+.tabs{display:flex;gap:3px;background:rgba(255,255,255,.03);border:1px solid var(--bo);border-radius:var(--r);padding:3px;margin-bottom:18px;width:fit-content;overflow-x:auto}
+.tab{padding:6px 14px;border-radius:7px;font-size:.79rem;font-weight:500;cursor:pointer;transition:var(--ease);color:var(--mu);border:none;background:none;font-family:var(--font);white-space:nowrap}
+.tab:hover{color:var(--tx)}
+.tab.active{background:var(--pr);color:#fff;box-shadow:0 2px 8px rgba(255,107,53,.28)}
+
+/* Comparison bar */
+.cmp-bar-wrap{margin:8px 0}
+.cmp-bar-bg{height:22px;background:rgba(255,255,255,.05);border-radius:5px;overflow:hidden;position:relative}
+.cmp-bar-fill{height:100%;border-radius:5px;transition:width .8s cubic-bezier(.16,1,.3,1);display:flex;align-items:center;padding-left:8px;min-width:40px}
+.cmp-bar-label{font-size:.71rem;font-weight:700;color:#fff}
+.cmp-bar-name{font-size:.76rem;color:var(--mu);margin-bottom:3px}
+.cmp-bar-val{font-size:.76rem;color:var(--tx);font-weight:600;position:absolute;right:8px;top:50%;transform:translateY(-50%)}
+
+/* Anomaly banner */
+.anomaly-banner{display:flex;align-items:flex-start;gap:10px;padding:12px 15px;background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.3);border-radius:var(--r);margin-bottom:14px}
+.anomaly-icon{font-size:1.2rem;flex-shrink:0;margin-top:1px}
+.anomaly-text{font-size:.84rem;color:#FCD34D;line-height:1.55}
+
+/* Carbon meter */
+.carbon-circle{display:flex;flex-direction:column;align-items:center;padding:16px 0}
+.carbon-val{font-size:2.2rem;font-weight:800;color:var(--te);letter-spacing:-1px}
+.carbon-unit{font-size:.75rem;color:var(--mu);margin-top:2px}
+.carbon-trees{font-size:.83rem;color:var(--am);margin-top:6px}
+
+/* What-if */
+.whatif-result{padding:14px;background:rgba(255,255,255,.03);border:1px solid var(--bo);border-radius:var(--r);margin-top:12px}
+.wi-delta{font-size:1.4rem;font-weight:800;letter-spacing:-.5px}
+.wi-delta.positive{color:var(--da)}
+.wi-delta.negative{color:var(--te)}
+
+.div{height:1px;background:var(--bo);margin:14px 0}
+
+/* Responsive */
+@media(max-width:900px){
+  .sidebar{transform:translateX(-100%)}.main{margin-left:0;max-width:100vw;padding:16px 12px}
+  .g2,.g3,.g4{grid-template-columns:1fr}.kpi-grid{grid-template-columns:1fr 1fr}
+}
+</style>
+</head>
+<body>
+
+<div id="lov" class="lov"><div class="spin"></div><div class="lov-t" id="lov-t">Processing...</div></div>
+<div id="toasts"></div>
+
+<div class="shell">
+
+<!-- SIDEBAR -->
+<aside class="sidebar">
+  <div class="sb-top">
+    <div class="logo-row">
+      <div class="logo-icon">⚡</div>
+      <div>
+        <div class="logo-name">Bill<em>Sense</em></div>
+        <div class="logo-badge">✦ AI Powered</div>
+      </div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="nav-sec">Analysis</div>
+    <div class="nav-item active" data-panel="dashboard" onclick="go('dashboard',this)"><span class="ni">📊</span> Dashboard</div>
+    <div class="nav-item" data-panel="upload" onclick="go('upload',this)"><span class="ni">📂</span> Upload Bill</div>
+    <div class="nav-item" data-panel="history" onclick="go('history',this)"><span class="ni">📈</span> History &amp; Trends</div>
+    <div class="nav-sec">AI Tools</div>
+    <div class="nav-item" data-panel="forecast" onclick="go('forecast',this)"><span class="ni">🔮</span> AI Forecast</div>
+    <div class="nav-item" data-panel="audit" onclick="go('audit',this)"><span class="ni">🔍</span> Energy Audit</div>
+    <div class="nav-item" data-panel="optimizer" onclick="go('optimizer',this)"><span class="ni">🎯</span> Slab Optimizer</div>
+    <div class="nav-item" data-panel="compare" onclick="go('compare',this)"><span class="ni">⚖️</span> Tariff Compare</div>
+    <div class="nav-item" data-panel="whatif" onclick="go('whatif',this)"><span class="ni">💡</span> What-If Planner</div>
+    <div class="nav-sec">Insights</div>
+    <div class="nav-item" data-panel="carbon" onclick="go('carbon',this)"><span class="ni">🌿</span> Carbon Footprint</div>
+    <div class="nav-item" data-panel="benchmark" onclick="go('benchmark',this)"><span class="ni">🏘️</span> Neighbourhood</div>
+    <div class="nav-item" data-panel="chat" onclick="go('chat',this)"><span class="ni">🤖</span> AI Assistant</div>
+  </nav>
+  <div class="sb-foot">
+    <label>Gemini API Key</label>
+    <input type="password" class="api-in" id="api-key" placeholder="AIza..." autocomplete="off" oninput="onApiKey(this.value)">
+    <div class="api-hint">Free at <a href="https://aistudio.google.com" target="_blank">aistudio.google.com</a> · Powers all AI features</div>
+    <div class="api-ok" id="api-ok">✓ AI Ready — All features unlocked</div>
+    <div class="api-warn" id="api-warn">Add key to unlock AI explanations, forecasts &amp; chat</div>
+  </div>
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+
+<!-- ═══ DASHBOARD ═══ -->
+<div class="panel active" id="p-dashboard">
+  <div class="ph">
+    <div class="ph-row">
+      <div><div class="ph-title">Dashboard</div><div class="ph-sub">Your electricity bill at a glance</div></div>
+      <div class="ph-actions">
+        <button class="btn btn-g btn-sm" onclick="genReport()">📄 AI Report</button>
+        <button class="btn btn-p btn-sm" onclick="go('upload',document.querySelector('[data-panel=upload]'))">+ Add Bill</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="db-empty" class="card">
+    <div class="empty">
+      <div class="ei">⚡</div>
+      <div class="et">No bill data yet</div>
+      <div class="es">Upload a PDF or manually enter your bill to unlock all AI features</div>
+      <br>
+      <button class="btn btn-p" onclick="go('upload',document.querySelector('[data-panel=upload]'))">Upload Your First Bill</button>
+    </div>
+  </div>
+
+  <div id="db-content" style="display:none">
+    <div id="anomaly-box" style="display:none" class="anomaly-banner">
+      <div class="anomaly-icon">⚠️</div>
+      <div class="anomaly-text" id="anomaly-txt"></div>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi ku"><div class="kpi-top"><div><div class="kpi-lbl">Units Consumed</div><div class="kpi-val" id="kv-u">—</div><div class="kpi-sub">kWh this month</div></div><div class="kpi-ico">⚡</div></div><div class="kpi-delta neu" id="kd-u">—</div></div>
+      <div class="kpi ka"><div class="kpi-top"><div><div class="kpi-lbl">Amount Due</div><div class="kpi-val" id="kv-a">—</div><div class="kpi-sub">total payable</div></div><div class="kpi-ico">₹</div></div><div class="kpi-delta neu" id="kd-a">—</div></div>
+      <div class="kpi kr"><div class="kpi-top"><div><div class="kpi-lbl">Avg Rate</div><div class="kpi-val" id="kv-r">—</div><div class="kpi-sub">per unit ₹/kWh</div></div><div class="kpi-ico">📊</div></div><div class="kpi-delta neu" id="kd-r">—</div></div>
+      <div class="kpi kd"><div class="kpi-top"><div><div class="kpi-lbl">DISCOM</div><div class="kpi-val" id="kv-d">—</div><div class="kpi-sub" id="kv-m">—</div></div><div class="kpi-ico">🏢</div></div><div class="kpi-delta neu" id="kd-con">Consumer —</div></div>
+      <div class="kpi kc"><div class="kpi-top"><div><div class="kpi-lbl">Carbon Output</div><div class="kpi-val" id="kv-c">—</div><div class="kpi-sub">kg CO₂ this month</div></div><div class="kpi-ico">🌿</div></div><div class="kpi-delta neu" id="kd-c">— trees to offset</div></div>
+    </div>
+
+    <div id="slab-warn" class="alert a-w" style="display:none"><div class="at">⚠️ Slab Crossing Warning</div><span id="slab-warn-txt"></span></div>
+
+    <div class="g2">
+      <div class="card">
+        <div class="ch"><div class="ct"><span class="ci">🍩</span> Bill Breakdown</div><button class="btn btn-g btn-sm" id="exp-btn" onclick="explainBill()">✨ AI Explain</button></div>
+        <div style="display:flex;gap:18px;align-items:center">
+          <div style="flex:1;max-width:195px"><div style="height:185px;position:relative"><canvas id="cDonut"></canvas></div></div>
+          <div class="dl" id="donut-leg"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="ch"><div class="ct"><span class="ci">📊</span> Slab Charges</div></div>
+        <div style="height:205px;position:relative"><canvas id="cSlab"></canvas></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="ch"><div class="ct"><span class="ci">🧾</span> Charge Breakdown</div></div>
+      <div id="charge-rows"></div>
+    </div>
+
+    <div id="ai-exp" class="ai-box" style="display:none">
+      <div class="ai-hd">🤖 AI Bill Analysis</div>
+      <div class="md" id="ai-exp-body"></div>
+    </div>
+
+    <div id="ai-report" class="ai-box" style="display:none;border-color:rgba(155,89,182,.25);background:linear-gradient(135deg,rgba(155,89,182,.05),rgba(74,144,226,.04))">
+      <div class="ai-hd" style="color:var(--pu)">📄 AI Monthly Report</div>
+      <div class="md" id="ai-report-body"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ UPLOAD ═══ -->
+<div class="panel" id="p-upload">
+  <div class="ph"><div class="ph-title">Upload Bill</div><div class="ph-sub">Upload a PDF or enter details manually</div></div>
+  <div class="mt">
+    <div class="mc active" id="m-pdf" onclick="setMethod('pdf')"><div class="mc-icon">📄</div><div class="mc-t">Upload PDF</div><div class="mc-s">AI-enhanced parsing</div></div>
+    <div class="mc" id="m-manual" onclick="setMethod('manual')"><div class="mc-icon">✏️</div><div class="mc-t">Manual Entry</div><div class="mc-s">Enter details yourself</div></div>
+  </div>
+  <div id="s-pdf" class="card">
+    <div class="uz" id="uzone" ondragover="dov(event)" ondrop="ddr(event)" ondragleave="dol()">
+      <input type="file" accept=".pdf" id="pdf-in" onchange="onPdf(event)">
+      <div class="uz-icon">📂</div>
+      <div class="uz-title">Drop your electricity bill PDF here</div>
+      <div class="uz-sub">or click to browse · Max 20MB · All major DISCOM formats · AI-enhanced parsing for low-quality scans</div>
+    </div>
+    <div id="parse-out" style="display:none;margin-top:16px">
+      <div class="cb-wrap"><div class="cb-lbl"><span>Parse Confidence</span><span id="conf-pct">0%</span></div><div class="cb"><div class="cb-fill" id="conf-fill" style="width:0%"></div></div></div>
+      <div id="parse-fields"></div>
+      <button class="btn btn-p" style="margin-top:13px" onclick="saveParsed()">💾 Save Bill</button>
+    </div>
+  </div>
+  <div id="s-manual" class="card" style="display:none">
+    <div class="g2">
+      <div class="fg"><label class="fl">DISCOM *</label>
+        <select class="fc" id="m-discom" onchange="calcManual()">
+          <option value="">Select your DISCOM...</option>
+          {% for key, d in discoms.items() %}<option value="{{ key }}">{{ d.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Units Consumed (kWh) *</label><input type="number" class="fc" id="m-units" placeholder="e.g. 285" min="1" max="9999" step="0.1" oninput="calcManual()"></div>
+      <div class="fg"><label class="fl">Billing Month</label><input type="month" class="fc" id="m-month" value="{{ now }}"></div>
+      <div class="fg"><label class="fl">Consumer Number</label><input type="text" class="fc" id="m-con" placeholder="Optional"></div>
+    </div>
+    <div id="m-result" style="display:none;margin-top:12px">
+      <div class="alert a-i"><div class="at">📋 Calculated Bill Preview</div><div id="m-calc"></div></div>
+      <button class="btn btn-p" onclick="saveManual()">💾 Save Bill</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ HISTORY ═══ -->
+<div class="panel" id="p-history">
+  <div class="ph"><div class="ph-row"><div><div class="ph-title">History &amp; Trends</div><div class="ph-sub">Track your consumption over time</div></div><button class="btn btn-t btn-sm" onclick="aiHistoryAnalysis()">🤖 AI Analysis</button></div></div>
+  <div id="h-empty" class="card"><div class="empty"><div class="ei">📈</div><div class="et">No history yet</div><div class="es">Save at least 2 bills to see trends</div></div></div>
+  <div id="h-content" style="display:none">
+    <div class="g2">
+      <div class="card"><div class="ch"><div class="ct"><span class="ci">📈</span> Monthly Consumption</div></div><div style="height:205px;position:relative"><canvas id="cLine"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct"><span class="ci">₹</span> Monthly Amount</div></div><div style="height:205px;position:relative"><canvas id="cBar"></canvas></div></div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct"><span class="ci">🗓️</span> Seasonal Heatmap</div></div><div id="heatmap"></div></div>
+    <div class="card"><div class="ch"><div class="ct"><span class="ci">📋</span> Bill Records</div><button class="btn btn-g btn-sm" onclick="loadHistory()">↺ Refresh</button></div><div id="h-table"></div></div>
+    <div id="h-ai" class="ai-box" style="display:none"><div class="ai-hd">🤖 AI Trend Analysis</div><div class="md" id="h-ai-body"></div></div>
+  </div>
+</div>
+
+<!-- ═══ FORECAST ═══ -->
+<div class="panel" id="p-forecast">
+  <div class="ph"><div class="ph-row"><div><div class="ph-title">AI Bill Forecast</div><div class="ph-sub">Gemini-powered next 3 months prediction</div></div><button class="btn btn-p btn-sm" onclick="runForecast()">🔮 Generate Forecast</button></div></div>
+  <div id="fc-empty" class="card"><div class="empty"><div class="ei">🔮</div><div class="et">Ready to forecast</div><div class="es">Click "Generate Forecast" — works best with 3+ months of bill history</div></div></div>
+  <div id="fc-content" style="display:none">
+    <div class="g3" id="fc-cards"></div>
+    <div class="g2">
+      <div class="card"><div class="ch"><div class="ct"><span class="ci">📈</span> Forecast Chart</div></div><div style="height:210px;position:relative"><canvas id="cForecast"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct"><span class="ci">💡</span> AI Insights</div></div><div class="md" id="fc-insights"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ AUDIT ═══ -->
+<div class="panel" id="p-audit">
+  <div class="ph"><div class="ph-title">AI Energy Audit</div><div class="ph-sub">Track your appliances and get personalised saving recommendations</div></div>
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><div class="ct"><span class="ci">➕</span> Add Appliance</div></div>
+      <div class="fg"><label class="fl">Preset Appliances</label>
+        <select class="fc" id="app-preset" onchange="fillPreset(this.value)">
+          <option value="">Choose a preset...</option>
+          {% for a in appliance_presets | tojson | replace('"', "'") %}{% endfor %}
+        </select>
+      </div>
+      <div class="g2" style="gap:10px">
+        <div class="fg"><label class="fl">Name</label><input class="fc" id="app-name" placeholder="e.g. Split AC"></div>
+        <div class="fg"><label class="fl">Wattage (W)</label><input type="number" class="fc" id="app-w" placeholder="e.g. 1500" min="1"></div>
+        <div class="fg"><label class="fl">Hours/Day</label><input type="number" class="fc" id="app-h" placeholder="e.g. 8" min="0.1" step="0.1" max="24"></div>
+        <div class="fg"><label class="fl">Days/Month</label><input type="number" class="fc" id="app-d" placeholder="30" min="1" max="31" value="30"></div>
+      </div>
+      <button class="btn btn-p" onclick="addAppliance()">➕ Add Appliance</button>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct"><span class="ci">📋</span> My Appliances</div><span id="app-total-kwh" style="font-size:.78rem;color:var(--bl);font-weight:600"></span></div>
+      <div id="app-list"><div class="empty" style="padding:20px"><div class="es">No appliances added yet</div></div></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="ch"><div class="ct"><span class="ci">🔍</span> AI Energy Audit</div><button class="btn btn-p btn-sm" onclick="runAudit()">🤖 Run AI Audit</button></div>
+    <div id="audit-out"><div style="color:var(--mu);font-size:.84rem">Add appliances above, then click Run AI Audit for personalised recommendations.</div></div>
+  </div>
+</div>
+
+<!-- ═══ OPTIMIZER ═══ -->
+<div class="panel" id="p-optimizer">
+  <div class="ph"><div class="ph-title">Slab Optimizer</div><div class="ph-sub">See exactly how changing usage affects your bill across all slab boundaries</div></div>
+  <div class="card">
+    <div class="g2" style="align-items:end">
+      <div class="fg" style="margin-bottom:0"><label class="fl">Select DISCOM</label>
+        <select class="fc" id="o-discom" onchange="runOpt()">
+          <option value="">Select DISCOM...</option>
+          {% for key, d in discoms.items() %}<option value="{{ key }}">{{ d.name }}</option>{% endfor %}
+        </select>
+      </div>
+      <div class="fg" style="margin-bottom:0"><label class="fl">Base: <span id="o-lbl" style="color:var(--pr)">200</span> units</label><input type="range" id="o-units" min="1" max="1200" value="200" oninput="onSlide(this.value)"></div>
+    </div>
+  </div>
+  <div id="opt-out" style="display:none">
+    <div class="g2">
+      <div class="card"><div class="ch"><div class="ct"><span class="ci">📊</span> Slab Structure</div></div><div id="slab-tbl"></div></div>
+      <div class="card"><div class="ch"><div class="ct"><span class="ci">📈</span> Bill vs Usage Curve</div></div><div style="height:225px;position:relative"><canvas id="cOpt"></canvas></div></div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct"><span class="ci">💰</span> Savings Scenarios</div></div><div id="sav-tbl"></div></div>
+  </div>
+</div>
+
+<!-- ═══ COMPARE ═══ -->
+<div class="panel" id="p-compare">
+  <div class="ph"><div class="ph-title">Tariff Comparison</div><div class="ph-sub">AI compares all 10 DISCOMs for your usage level</div></div>
+  <div class="card">
+    <div class="g2" style="align-items:end">
+      <div class="fg" style="margin-bottom:0"><label class="fl">Monthly Units to Compare</label><input type="number" class="fc" id="cmp-units" placeholder="e.g. 285" min="1" oninput="runCompare()"></div>
+      <div class="fg" style="margin-bottom:0"><div id="cmp-status" style="color:var(--mu);font-size:.82rem;padding-top:22px">Enter units to compare all DISCOMs</div></div>
+    </div>
+  </div>
+  <div id="cmp-out" style="display:none">
+    <div class="card"><div class="ch"><div class="ct"><span class="ci">⚖️</span> DISCOM Comparison</div><span id="cmp-best" class="pill ps"></span></div><div id="cmp-bars"></div></div>
+    <div class="g2">
+      <div class="card"><div class="ch"><div class="ct"><span class="ci">📊</span> Cost Chart</div></div><div style="height:230px;position:relative"><canvas id="cCmp"></canvas></div></div>
+      <div class="card"><div class="ch"><div class="ct"><span class="ci">🤖</span> AI Insight</div></div><div class="md" id="cmp-insight"></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ WHAT-IF ═══ -->
+<div class="panel" id="p-whatif">
+  <div class="ph"><div class="ph-title">What-If Planner</div><div class="ph-sub">AI simulates bill impact of adding new appliances or habits</div></div>
+  <div class="g2">
+    <div class="card">
+      <div class="ch"><div class="ct"><span class="ci">💡</span> Plan a Scenario</div></div>
+      <div class="fg"><label class="fl">Scenario Type</label>
+        <select class="fc" id="wi-type" onchange="updateWiUnits()">
+          <option value="Split AC (1.5T, 8h/day)">Add Split AC (1.5 Ton, 8h/day)</option>
+          <option value="EV Charger (3.3kW, 4h/day)">Add EV Charger (3.3kW, 4h/day)</option>
+          <option value="Second Fridge">Add Second Refrigerator</option>
+          <option value="Geyser upgrade (2kW, 1h/day)">Add/Upgrade Geyser (2kW, 1h/day)</option>
+          <option value="Work from home (laptop 8h + lights)">Work From Home Setup</option>
+          <option value="Solar panels offset">Add Rooftop Solar (2kW)</option>
+          <option value="Custom">Custom Scenario</option>
+        </select>
+      </div>
+      <div class="fg"><label class="fl">Extra Units (kWh/month)</label><input type="number" class="fc" id="wi-units" placeholder="e.g. 120" oninput="runWhatIf()"></div>
+      <div class="fg" id="wi-custom-wrap" style="display:none"><label class="fl">Custom Description</label><input class="fc" id="wi-desc" placeholder="Describe your scenario"></div>
+      <button class="btn btn-p" onclick="runWhatIf()">🤖 Analyse Impact</button>
+    </div>
+    <div class="card">
+      <div class="ch"><div class="ct"><span class="ci">📊</span> Impact Result</div></div>
+      <div id="wi-result"><div style="color:var(--mu);font-size:.84rem">Select a scenario on the left to see AI-powered impact analysis.</div></div>
+    </div>
+  </div>
+  <div id="wi-ai" class="ai-box" style="display:none"><div class="ai-hd">🤖 AI Impact Analysis</div><div class="md" id="wi-ai-body"></div></div>
+</div>
+
+<!-- ═══ CARBON ═══ -->
+<div class="panel" id="p-carbon">
+  <div class="ph"><div class="ph-row"><div><div class="ph-title">Carbon Footprint</div><div class="ph-sub">Your environmental impact &amp; AI green tips</div></div><button class="btn btn-t btn-sm" onclick="runCarbon()">🌿 Calculate</button></div></div>
+  <div id="carbon-empty" class="card"><div class="empty"><div class="ei">🌿</div><div class="et">No bill data</div><div class="es">Add a bill to calculate your carbon footprint</div></div></div>
+  <div id="carbon-content" style="display:none">
+    <div class="g3">
+      <div class="card" style="text-align:center">
+        <div class="ch" style="justify-content:center;margin-bottom:8px"><div class="ct"><span class="ci">💨</span> CO₂ Emitted</div></div>
+        <div class="carbon-val" id="c-kg">—</div>
+        <div class="carbon-unit">kg CO₂ this month</div>
+        <div class="carbon-trees" id="c-trees"></div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="ch" style="justify-content:center;margin-bottom:8px"><div class="ct"><span class="ci">🌍</span> Equivalent To</div></div>
+        <div style="font-size:1.5rem;font-weight:800;color:var(--am)" id="c-equiv">—</div>
+        <div style="font-size:.76rem;color:var(--mu);margin-top:4px">km driven by average car</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="ch" style="justify-content:center;margin-bottom:8px"><div class="ct"><span class="ci">☀️</span> Solar Offset</div></div>
+        <div style="font-size:1.5rem;font-weight:800;color:var(--te)" id="c-solar">—</div>
+        <div style="font-size:.76rem;color:var(--mu);margin-top:4px">kW solar panels to offset</div>
+      </div>
+    </div>
+    <div class="card"><div class="ch"><div class="ct"><span class="ci">🤖</span> AI Green Tips</div></div><div id="carbon-tips"></div></div>
+  </div>
+</div>
+
+<!-- ═══ BENCHMARK ═══ -->
+<div class="panel" id="p-benchmark">
+  <div class="ph"><div class="ph-title">Neighbourhood Benchmark</div><div class="ph-sub">Compare your usage with similar households in your city</div></div>
+  <div class="card">
+    <div class="g3">
+      <div class="fg" style="margin-bottom:0"><label class="fl">City</label>
+        <select class="fc" id="b-city" onchange="loadBench()">
+          <option>Bengaluru</option><option>Mumbai</option><option>Chennai</option><option>Delhi</option>
+          <option>Hyderabad</option><option>Kolkata</option><option>Ahmedabad</option><option>Jaipur</option>
+          <option>Pune</option><option>Surat</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-bottom:0"><label class="fl">Home Type</label>
+        <select class="fc" id="b-type" onchange="loadBench()">
+          <option value="1BHK">1 BHK</option><option value="2BHK" selected>2 BHK</option>
+          <option value="3BHK">3 BHK</option><option value="Villa">Villa / Bungalow</option>
+        </select>
+      </div>
+      <div class="fg" style="margin-bottom:0"><label class="fl">Your Monthly Units</label><input type="number" class="fc" id="b-units" placeholder="e.g. 285" oninput="loadBench()"></div>
+    </div>
+  </div>
+  <div class="g2">
+    <div class="card"><div class="ch"><div class="ct"><span class="ci">🎯</span> Your Percentile</div></div><div style="text-align:center;padding:6px 0"><canvas id="cGauge" width="220" height="130"></canvas><div id="pct-lbl" style="margin-top:5px;font-size:.79rem;color:var(--mu)"></div></div></div>
+    <div class="card"><div class="ch"><div class="ct"><span class="ci">📊</span> City Distribution</div></div><div style="height:185px;position:relative"><canvas id="cDist"></canvas></div></div>
+  </div>
+  <div class="card"><div class="ch"><div class="ct"><span class="ci">🏘️</span> Neighbourhood Stats</div></div><div id="b-stats"></div></div>
+</div>
+
+<!-- ═══ CHAT ═══ -->
+<div class="panel" id="p-chat">
+  <div class="ph"><div class="ph-title">AI Assistant</div><div class="ph-sub">Context-aware chat powered by Gemini 2.0 Flash</div></div>
+  <div class="card" style="padding:14px">
+    <div class="qp">
+      <button class="qb" onclick="qp('How can I reduce my electricity bill by 20% this month?')">💡 Reduce by 20%</button>
+      <button class="qb" onclick="qp('Explain my current slab rate and when I will cross to the next slab')">📊 My slab explained</button>
+      <button class="qb" onclick="qp('Which appliances use the most electricity at home and what should I do?')">🔌 Top appliances</button>
+      <button class="qb" onclick="qp('Is rooftop solar worth it for my monthly usage? Give me ROI estimate in rupees')">☀️ Solar ROI</button>
+      <button class="qb" onclick="qp('What time should I run my AC, washing machine and geyser to save money?')">⏰ Smart scheduling</button>
+      <button class="qb" onclick="qp('Compare my bill with a typical Indian household and tell me if I am spending too much')">🏠 Am I overpaying?</button>
+      <button class="qb" onclick="qp('What is the impact of adding an EV charger to my home on my electricity bill?')">🔋 EV charger impact</button>
+      <button class="qb" onclick="qp('Give me a week-by-week plan to reduce my electricity consumption')">📅 Weekly plan</button>
+    </div>
+    <div class="chat-wrap">
+      <div class="chat-msgs" id="chat-msgs">
+        <div class="msg a">
+          <div class="bubble">
+            👋 Hi! I'm <strong>BillSense AI</strong>, powered by Gemini 2.0 Flash. I know your bill details, DISCOM rates, and Indian energy context — so I can give you hyper-personalised answers.<br><br>
+            <strong>What I can help with:</strong> Bill explanations · Savings tips · Appliance advice · Solar ROI · Tariff comparison · Forecasts · Energy audits<br><br>
+            Add your <strong>free Gemini API key</strong> in the sidebar for full AI responses!
+          </div>
+          <div class="msg-t">BillSense AI · Now</div>
+        </div>
+      </div>
+      <div class="chat-row">
+        <textarea class="chat-in" id="chat-in" placeholder="Ask anything about your electricity bill..." rows="1" onkeydown="ckd(event)" oninput="ars(this)"></textarea>
+        <button class="btn btn-p" id="chat-btn" onclick="sendChat()">Send</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</main>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+const S = {
+  bill: null, hist: [], msgs: [], appliances: [],
+  apiKey: localStorage.getItem('bs_key') || '',
+  method: 'pdf', parsed: null, charts: {}, optT: null, cmpT: null,
+};
+
+const DISCOMS   = {{ discom_list | safe }};
+const PRESETS   = {{ appliance_presets | safe }};
+const WI_UNITS  = {"Split AC (1.5T, 8h/day)":360,"EV Charger (3.3kW, 4h/day)":396,
+                    "Second Fridge":108,"Geyser upgrade (2kW, 1h/day)":60,
+                    "Work from home (laptop 8h + lights)":30,"Solar panels offset":-180,"Custom":0};
+
+// Restore API key
+if (S.apiKey) { $('api-key').value = S.apiKey; updateApiStatus(S.apiKey); }
+
+// Chart defaults
+Chart.defaults.color='#6B7A99'; Chart.defaults.borderColor='rgba(255,255,255,0.05)';
+Chart.defaults.font.family="'DM Sans',sans-serif"; Chart.defaults.font.size=12;
+
+// ═══════════════════════════════════════════════════════════
+// UTILS
+// ═══════════════════════════════════════════════════════════
+const $ = id => document.getElementById(id);
+const fmtN = n => Number(n||0).toLocaleString('en-IN',{maximumFractionDigits:0});
+const fmtR = n => '₹'+fmtN(n);
+const now  = () => new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+const md   = t => marked.parse(t||'');
+
+function showLoad(t='Processing...'){$('lov').classList.add('on');$('lov-t').textContent=t;}
+function hideLoad(){$('lov').classList.remove('on');}
+
+function toast(msg,type='',dur=3500){
+  const c=$('toasts'),el=document.createElement('div');
+  el.className='toast'+(type?' '+type:'');el.textContent=msg;c.appendChild(el);
+  setTimeout(()=>{el.style.animation='tOut .28s ease forwards';setTimeout(()=>el.remove(),300);},dur);
+}
+
+function updateApiStatus(v){
+  S.apiKey=v.trim(); localStorage.setItem('bs_key',S.apiKey);
+  const ok=$('api-ok'),warn=$('api-warn'),valid=S.apiKey.length>10;
+  ok.classList.toggle('on',valid); warn.classList.toggle('on',!valid);
+}
+function onApiKey(v){updateApiStatus(v);}
+
+function dc(key){if(S.charts[key]){S.charts[key].destroy();S.charts[key]=null;}}
+
+// ═══════════════════════════════════════════════════════════
+// NAVIGATION
+// ═══════════════════════════════════════════════════════════
+function go(name,el){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n=>n.classList.remove('active'));
+  $('p-'+name).classList.add('active');
+  if(el) el.classList.add('active');
+  const handlers={history:loadHistory,benchmark:loadBench,audit:loadAppliances,
+                   forecast:()=>{}};
+  if(handlers[name]) handlers[name]();
+}
+
+// ═══════════════════════════════════════════════════════════
+// UPLOAD
+// ═══════════════════════════════════════════════════════════
+function setMethod(m){
+  S.method=m;
+  $('m-pdf').classList.toggle('active',m==='pdf');
+  $('m-manual').classList.toggle('active',m==='manual');
+  $('s-pdf').style.display=m==='pdf'?'block':'none';
+  $('s-manual').style.display=m==='manual'?'block':'none';
+}
+function dov(e){e.preventDefault();$('uzone').classList.add('drag');}
+function dol(){$('uzone').classList.remove('drag');}
+function ddr(e){e.preventDefault();dol();const f=e.dataTransfer.files[0];if(f&&f.name.toLowerCase().endsWith('.pdf'))procPdf(f);else toast('Please drop a PDF file','err');}
+function onPdf(e){const f=e.target.files[0];if(f)procPdf(f);}
+
+async function procPdf(file){
+  showLoad('Parsing bill PDF...');
+  const fd=new FormData(); fd.append('file',file); fd.append('api_key',S.apiKey);
+  try{
+    const r=await fetch('/api/upload-pdf',{method:'POST',body:fd});
+    const d=await r.json(); hideLoad();
+    if(d.error){toast('Parse error: '+d.error,'err');return;}
+    S.parsed=d; showParseResult(d);
+    const c=Math.round(d.confidence);
+    const msg=d.gemini_enhanced?`AI-enhanced parsing (${c}% confidence) — review fields below`:`Parsed at ${c}% confidence — review fields below`;
+    toast(msg,c>=60?'ok':'warn');
+  }catch(e){hideLoad();toast('Upload failed','err');}
+}
+
+function showParseResult(d){
+  const pct=Math.round(d.confidence);
+  $('conf-pct').textContent=pct+'%';
+  const fill=$('conf-fill');
+  fill.style.width=pct+'%';
+  fill.style.background=pct>=70?'#00D4AA':pct>=40?'#F59E0B':'#EF4444';
+  const opts=DISCOMS.map(([k,n])=>`<option value="${k}" ${d.discom===k?'selected':''}>${n}</option>`).join('');
+  $('parse-fields').innerHTML=`
+    <div class="g2" style="margin-top:13px">
+      <div class="fg"><label class="fl">Consumer Number</label><input class="fc" id="pf-con" value="${d.consumer_number||''}" placeholder="Not detected"></div>
+      <div class="fg"><label class="fl">DISCOM *</label><select class="fc" id="pf-dis"><option value="">Select...</option>${opts}</select></div>
+      <div class="fg"><label class="fl">Units Consumed (kWh) *</label><input type="number" class="fc" id="pf-u" value="${d.units_consumed||''}" placeholder="Not detected" min="1" step="0.1"></div>
+      <div class="fg"><label class="fl">Amount on Bill (₹)</label><input type="number" class="fc" id="pf-am" value="${d.amount_due||''}" placeholder="For reference only" readonly></div>
+      <div class="fg"><label class="fl">Billing Month</label><input type="month" class="fc" id="pf-mo" value="${new Date().toISOString().slice(0,7)}"></div>
+    </div>`;
+  $('parse-out').style.display='block';
+}
+
+async function saveParsed(){
+  const dis=$('pf-dis')?.value,u=parseFloat($('pf-u')?.value),mo=$('pf-mo')?.value||new Date().toISOString().slice(0,7),con=$('pf-con')?.value||'';
+  if(!dis){toast('Please select your DISCOM','err');return;}
+  if(!u||u<=0){toast('Please enter valid units','err');return;}
+  showLoad('Saving bill...');
+  try{
+    const r=await fetch('/api/save-bill',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({discom:dis,units:u,billing_month:mo,consumer_number:con,source:'pdf',confidence:S.parsed?.confidence||80})});
+    const d=await r.json(); hideLoad();
+    if(d.error){toast(d.error,'err');return;}
+    S.bill={discom:dis,units:u,month:mo,consumer:con,...d.calculated};
+    await updateDash(S.bill);
+    go('dashboard',document.querySelector('[data-panel=dashboard]'));
+    toast('Bill saved! Running AI anomaly check...','ok');
+    checkAnomaly();
+  }catch(e){hideLoad();toast('Save failed','err');}
+}
+
+async function calcManual(){
+  const dis=$('m-discom').value,u=parseFloat($('m-units').value);
+  if(!dis||!u||u<=0){$('m-result').style.display='none';return;}
+  try{
+    const r=await fetch('/api/calculate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({discom:dis,units:u})});
+    const d=await r.json(); if(d.error)return;
+    $('m-calc').innerHTML=`Total: <strong>${fmtR(d.total)}</strong> | Energy: ${fmtR(d.energy_charges)} | Fixed: ${fmtR(d.fixed_charges)} | Taxes: ${fmtR(d.taxes)} | Rate: ₹${d.avg_rate}/unit`;
+    $('m-result').style.display='block';
+  }catch(e){}
+}
+
+async function saveManual(){
+  const dis=$('m-discom').value,u=parseFloat($('m-units').value),mo=$('m-month').value,con=$('m-con').value||'';
+  if(!dis){toast('Please select your DISCOM','err');return;}
+  if(!u||u<=0){toast('Please enter valid units','err');return;}
+  showLoad('Saving bill...');
+  try{
+    const r=await fetch('/api/save-bill',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({discom:dis,units:u,billing_month:mo,consumer_number:con,source:'manual'})});
+    const d=await r.json(); hideLoad();
+    if(d.error){toast(d.error,'err');return;}
+    S.bill={discom:dis,units:u,month:mo,consumer:con,...d.calculated};
+    await updateDash(S.bill);
+    go('dashboard',document.querySelector('[data-panel=dashboard]'));
+    toast('Bill saved!','ok');
+    checkAnomaly();
+  }catch(e){hideLoad();toast('Save failed','err');}
+}
+
+// ═══════════════════════════════════════════════════════════
+// DASHBOARD
+// ═══════════════════════════════════════════════════════════
+async function updateDash(b){
+  $('db-empty').style.display='none';
+  $('db-content').style.display='block';
+  $('kv-u').textContent=Number(b.units||0).toLocaleString('en-IN');
+  $('kv-a').textContent=fmtR(b.total||b.amount_due||0);
+  $('kv-r').textContent='₹'+Number(b.avg_rate||0).toFixed(2);
+  $('kv-d').textContent=b.discom||'—';
+  $('kv-m').textContent=b.month||b.billing_month||'—';
+  $('kd-con').textContent=b.consumer?'Consumer '+b.consumer:'Consumer —';
+  // Carbon KPI
+  const co2=round2(b.units*0.82);
+  $('kv-c').textContent=co2;
+  $('kd-c').textContent=round2(co2/21.7)+' trees to offset';
+  if(S.hist.length>=2){
+    const prev=S.hist[1];
+    setDelta('kd-u',b.units,prev.units_consumed);
+    setDelta('kd-a',b.total||b.amount_due,prev.amount_due);
+    setDelta('kd-r',b.avg_rate,prev.avg_rate);
+  }
+  const w=b.slab_warning;
+  if(w){$('slab-warn').style.display='block';$('slab-warn-txt').textContent=`Only ${w.units_away} units from next slab (₹${w.next_rate}/unit). Reducing by ${w.units_away} units keeps you at ₹${w.current_rate}/unit.`;}
+  else $('slab-warn').style.display='none';
+  $('ai-exp').style.display='none';
+  $('ai-report').style.display='none';
+  drawDonut(b); drawSlabBar(b); renderChargeRows(b);
+}
+
+function round2(n){return Math.round(n*10)/10;}
+
+function setDelta(id,cur,prev){
+  const el=$(id); if(!cur||!prev||prev===0)return;
+  const pct=((cur-prev)/prev*100).toFixed(1),up=cur>prev;
+  el.className='kpi-delta '+(up?'up':'down');
+  el.textContent=(up?'↑ ':'↓ ')+Math.abs(pct)+'% vs last month';
+}
+
+function drawDonut(b){
+  dc('donut');
+  const labels=['Energy','Fixed','Fuel Surcharge','Taxes'];
+  const vals=[b.energy_charges||0,b.fixed_charges||0,b.fuel_surcharge||0,b.taxes||0];
+  const cols=['#FF6B35','#00D4AA','#4A90E2','#9B59B6'];
+  S.charts.donut=new Chart($('cDonut').getContext('2d'),{type:'doughnut',
+    data:{labels,datasets:[{data:vals,backgroundColor:cols,borderWidth:0,hoverOffset:5}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>' '+fmtR(c.parsed)}}}}});
+  $('donut-leg').innerHTML=labels.map((l,i)=>`<div class="di"><div class="dd" style="background:${cols[i]}"></div><div class="dn">${l}</div><div class="dv">${fmtR(vals[i])}</div></div>`).join('');
+}
+
+function drawSlabBar(b){
+  const slabs=b.slab_charges||[]; if(!slabs.length)return; dc('slab');
+  const pal=['#FF6B35','#00D4AA','#4A90E2','#9B59B6','#F59E0B'];
+  const cols=slabs.map((_,i)=>pal[i%pal.length]);
+  S.charts.slab=new Chart($('cSlab').getContext('2d'),{type:'bar',
+    data:{labels:slabs.map(s=>s.label),datasets:[{data:slabs.map(s=>s.charge),backgroundColor:cols.map(c=>c+'88'),borderColor:cols,borderWidth:1.5,borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>'₹'+v}}}}});
+}
+
+function renderChargeRows(b){
+  const rows=[['Energy Charges',b.energy_charges||0],['Fixed / Meter Charge',b.fixed_charges||0],['Fuel Adjustment Charge',b.fuel_surcharge||0],['Taxes & Duties',b.taxes||0]];
+  const total=b.total||b.amount_due||0;
+  $('charge-rows').innerHTML=rows.map(([l,v])=>`<div class="sr"><div class="sl">${l}</div><div class="sv">${fmtR(v)}</div></div>`).join('')+
+    `<div class="sr" style="border-top:1px solid rgba(255,255,255,.1);margin-top:4px;padding-top:13px"><div class="sl" style="font-weight:700;color:var(--tx)">TOTAL PAYABLE</div><div class="sv" style="color:var(--pr);font-size:1.1rem">${fmtR(total)}</div></div>`;
+}
+
+async function explainBill(){
+  if(!S.bill){toast('Load a bill first','warn');return;}
+  const btn=$('exp-btn'); btn.disabled=true; btn.innerHTML='<span class="spin"></span> Analysing...';
+  try{
+    const b=S.bill;
+    const r=await fetch('/api/ai/explain',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({api_key:S.apiKey,discom:b.discom,units:b.units,amount:b.total||b.amount_due,
+        energy_charges:b.energy_charges,fixed_charges:b.fixed_charges,fuel_surcharge:b.fuel_surcharge,
+        taxes:b.taxes,avg_rate:b.avg_rate,month:b.month||b.billing_month,slab_charges:b.slab_charges||[]})});
+    const d=await r.json();
+    $('ai-exp').style.display='block';
+    $('ai-exp-body').innerHTML=md(d.result||'');
+    $('ai-exp').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){toast('AI explain failed','err');}
+  finally{btn.disabled=false;btn.innerHTML='✨ AI Explain';}
+}
+
+async function checkAnomaly(){
+  if(!S.bill||S.hist.length<2)return;
+  try{
+    const r=await fetch('/api/ai/anomaly',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({api_key:S.apiKey,bill:S.bill,history:S.hist})});
+    const d=await r.json();
+    if(d.result&&d.result.length>5){
+      $('anomaly-box').style.display='flex';
+      $('anomaly-txt').textContent=d.result;
+    }
+  }catch(e){}
+}
+
+async function genReport(){
+  if(!S.bill){toast('Load a bill first','warn');return;}
+  const btn=event.target; btn.disabled=true; btn.innerHTML='<span class="spin"></span> Generating...';
+  try{
+    const bData=await fetch('/api/benchmark?city=Bengaluru&home_type=2BHK').then(r=>r.json());
+    const r=await fetch('/api/ai/report',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({api_key:S.apiKey,bill:{...S.bill,discom:S.bill.discom,units:S.bill.units,amount:S.bill.total,month:S.bill.month,avg_rate:S.bill.avg_rate},history:S.hist,benchmark:bData.data})});
+    const d=await r.json();
+    $('ai-report').style.display='block';
+    $('ai-report-body').innerHTML=md(d.result||'');
+    $('ai-report').scrollIntoView({behavior:'smooth',block:'nearest'});
+  }catch(e){toast('Report generation failed','err');}
+  finally{btn.disabled=false;btn.innerHTML='📄 AI Report';}
+}
+
+// ═══════════════════════════════════════════════════════════
+// HISTORY
+// ═══════════════════════════════════════════════════════════
+async function loadHistory(){
+  try{
+    const r=await fetch('/api/history');
+    S.hist=await r.json();
+    if(!S.hist.length){$('h-empty').style.display='block';$('h-content').style.display='none';return;}
+    $('h-empty').style.display='none';$('h-content').style.display='block';
+    const asc=[...S.hist].reverse();
+    drawLineChart(asc); drawBarChart(asc); drawHeatmap(asc); drawHistoryTable(S.hist);
+    if(!S.bill&&S.hist.length){
+      const l=S.hist[0];
+      S.bill={discom:l.discom,units:l.units_consumed,month:l.billing_month,consumer:l.consumer_number,
+        total:l.amount_due,energy_charges:l.energy_charges,fixed_charges:l.fixed_charges,
+        fuel_surcharge:l.fuel_surcharge,taxes:l.taxes,avg_rate:l.avg_rate,slab_warning:null,slab_charges:[]};
+      updateDash(S.bill);
+    }
+  }catch(e){console.error(e);}
+}
+
+function drawLineChart(asc){
+  dc('line');
+  S.charts.line=new Chart($('cLine').getContext('2d'),{type:'line',
+    data:{labels:asc.map(b=>b.billing_month),datasets:[{label:'kWh',data:asc.map(b=>b.units_consumed),borderColor:'#FF6B35',backgroundColor:'rgba(255,107,53,.09)',borderWidth:2,pointBackgroundColor:'#FF6B35',pointRadius:4,tension:.4,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'}},y:{grid:{color:'rgba(255,255,255,.04)'}}}}});
+}
+
+function drawBarChart(asc){
+  dc('barH');
+  S.charts.barH=new Chart($('cBar').getContext('2d'),{type:'bar',
+    data:{labels:asc.map(b=>b.billing_month),datasets:[{label:'₹',data:asc.map(b=>b.amount_due),backgroundColor:'rgba(0,212,170,.45)',borderColor:'#00D4AA',borderWidth:1.5,borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>'₹'+fmtN(v)}}}}});
+}
+
+function drawHeatmap(asc){
+  const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const years=[...new Set(asc.map(b=>b.billing_month.slice(0,4)))].sort();
+  const map={};asc.forEach(b=>{map[b.billing_month]=b.units_consumed;});
+  const vals=Object.values(map),minV=Math.min(...vals),rng=(Math.max(...vals)-minV)||1;
+  let html=`<div class="hm" style="grid-template-columns:52px repeat(12,1fr)"><div></div>${MN.map(m=>`<div style="font-size:.59rem;color:var(--mu);text-align:center;padding:3px 0">${m}</div>`).join('')}`;
+  years.forEach(yr=>{
+    html+=`<div style="font-size:.69rem;color:var(--mu);display:flex;align-items:center;font-weight:600">${yr}</div>`;
+    for(let m=1;m<=12;m++){
+      const k=`${yr}-${String(m).padStart(2,'0')}`,v=map[k];
+      if(v!==undefined){const t=(v-minV)/rng;const bg=`rgba(${Math.round(80+175*t)},${Math.round(110-55*t)},${Math.round(50+10*t)},${.2+.7*t})`;html+=`<div class="hm-cell" style="background:${bg}" title="${k}: ${v} kWh">${v}</div>`;}
+      else html+=`<div class="hm-cell" style="background:rgba(255,255,255,.025)"></div>`;
+    }
+  });
+  $('heatmap').innerHTML=html+'</div>';
+}
+
+function drawHistoryTable(data){
+  $('h-table').innerHTML=`<table class="tbl"><thead><tr><th>Month</th><th>DISCOM</th><th>Units</th><th>Amount</th><th>Avg Rate</th><th>Source</th><th></th></tr></thead><tbody>${data.map(b=>`<tr><td>${b.billing_month}</td><td>${b.discom}</td><td>${b.units_consumed} kWh</td><td>${fmtR(b.amount_due)}</td><td>₹${Number(b.avg_rate||0).toFixed(2)}/unit</td><td><span class="pill ${b.source==='pdf'?'pp':'ps'}">${b.source}</span></td><td><button class="btn btn-g btn-xs" style="color:var(--da)" onclick="delBill(${b.id})">✕</button></td></tr>`).join('')}</tbody></table>`;
+}
+
+async function delBill(id){if(!confirm('Delete this bill?'))return;await fetch(`/api/delete-bill/${id}`,{method:'DELETE'});toast('Deleted','warn');loadHistory();}
+
+async function aiHistoryAnalysis(){
+  if(S.hist.length<2){toast('Need at least 2 bills','warn');return;}
+  const btn=event.target;btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{
+    const r=await fetch('/api/ai/forecast',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:S.apiKey,history:S.hist})});
+    const d=await r.json();
+    $('h-ai').style.display='block';
+    $('h-ai-body').innerHTML=`<p style="color:var(--mu);font-size:.84rem">${d.result?.insights||'Analysis complete.'}</p>`;
+  }catch(e){toast('Analysis failed','err');}
+  finally{btn.disabled=false;btn.innerHTML='🤖 AI Analysis';}
+}
+
+// ═══════════════════════════════════════════════════════════
+// FORECAST
+// ═══════════════════════════════════════════════════════════
+async function runForecast(){
+  if(S.hist.length<1){toast('Add at least 1 bill first','warn');return;}
+  const btn=event.target;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Forecasting...';
+  try{
+    const r=await fetch('/api/ai/forecast',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:S.apiKey,history:S.hist})});
+    const d=await r.json();
+    const fc=d.result;
+    if(!fc||!fc.months){toast('Forecast failed','err');return;}
+    $('fc-empty').style.display='none';$('fc-content').style.display='block';
+    $('fc-cards').innerHTML=fc.months.map(m=>`<div class="fc-card"><div class="fc-month">${m.month}</div><div class="fc-units">${m.predicted_units}</div><div class="fc-amount">${fmtR(m.predicted_amount)}</div><div class="fc-conf"><span class="pill ${m.confidence==='High'?'ps':m.confidence==='Medium'?'pw':'pd'}">${m.confidence}</span></div><div class="fc-reason">${m.reason}</div></div>`).join('');
+    $('fc-insights').innerHTML=`<p style="color:var(--mu);margin-bottom:8px">Trend: <strong style="color:var(--tx)">${fc.trend||'—'}</strong></p><p>${fc.insights||''}</p>`;
+    // Draw forecast chart
+    dc('forecast');
+    const histAsc=[...S.hist].reverse();
+    const histLabels=histAsc.map(b=>b.billing_month);
+    const histData=histAsc.map(b=>b.units_consumed);
+    const fcLabels=fc.months.map(m=>m.month);
+    const fcData=fc.months.map(m=>m.predicted_units);
+    S.charts.forecast=new Chart($('cForecast').getContext('2d'),{type:'line',
+      data:{labels:[...histLabels,...fcLabels],datasets:[
+        {label:'Historical',data:[...histData,...new Array(fcLabels.length).fill(null)],borderColor:'#FF6B35',backgroundColor:'rgba(255,107,53,.08)',borderWidth:2,pointRadius:4,tension:.4,fill:true},
+        {label:'Forecast',data:[...new Array(histLabels.length-1).fill(null),histData[histData.length-1],...fcData],borderColor:'#00D4AA',backgroundColor:'rgba(0,212,170,.08)',borderWidth:2,pointRadius:5,borderDash:[6,3],tension:.4,fill:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'}},y:{grid:{color:'rgba(255,255,255,.04)'}}}}});
+  }catch(e){toast('Forecast failed','err');}
+  finally{btn.disabled=false;btn.innerHTML='🔮 Generate Forecast';}
+}
+
+// ═══════════════════════════════════════════════════════════
+// ENERGY AUDIT
+// ═══════════════════════════════════════════════════════════
+// Fill preset select
+const presetSel=$('app-preset');
+PRESETS.forEach(p=>{const o=document.createElement('option');o.value=JSON.stringify(p);o.textContent=p.icon+' '+p.name;presetSel.appendChild(o);});
+
+function fillPreset(v){
+  if(!v)return;
+  try{const p=JSON.parse(v);$('app-name').value=p.name;$('app-w').value=p.wattage;$('app-h').value=p.hours;$('app-d').value=30;}
+  catch(e){}
+}
+
+async function addAppliance(){
+  const name=$('app-name').value.trim(),w=parseFloat($('app-w').value),h=parseFloat($('app-h').value),d=parseInt($('app-d').value)||30;
+  if(!name||!w||!h){toast('Fill name, wattage, and hours','warn');return;}
+  try{
+    await fetch('/api/appliances',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,wattage:w,hours_per_day:h,days_per_month:d})});
+    $('app-name').value='';$('app-w').value='';$('app-h').value='';$('app-preset').value='';
+    loadAppliances();toast('Appliance added','ok');
+  }catch(e){toast('Failed to add','err');}
+}
+
+async function loadAppliances(){
+  try{
+    const r=await fetch('/api/appliances');
+    S.appliances=await r.json();
+    renderAppliances();
+  }catch(e){}
+}
+
+function renderAppliances(){
+  const rate=S.bill?.avg_rate||6;
+  let totalKwh=0;
+  const html=S.appliances.map(a=>{
+    const kwh=round2(a.wattage*a.hours_per_day*a.days_per_month/1000);
+    totalKwh+=kwh;
+    const cost=round2(kwh*rate);
+    const icon=PRESETS.find(p=>p.name===a.name)?.icon||'🔌';
+    return `<div class="app-item"><div class="app-icon-wrap">${icon}</div><div class="app-info"><div class="app-name">${a.name}</div><div class="app-detail">${a.wattage}W × ${a.hours_per_day}h/day × ${a.days_per_month} days</div></div><div><div class="app-kwh">${kwh} kWh</div><div class="app-cost">~${fmtR(cost)}/mo</div></div><button class="btn btn-g btn-xs" style="color:var(--da)" onclick="delAppliance(${a.id})">✕</button></div>`;
+  }).join('');
+  $('app-list').innerHTML=html||'<div class="empty" style="padding:20px"><div class="es">No appliances yet</div></div>';
+  $('app-total-kwh').textContent=S.appliances.length?`Total: ${round2(totalKwh)} kWh/mo (~${fmtR(round2(totalKwh*rate))})`:'';
+}
+
+async function delAppliance(id){
+  await fetch('/api/appliances',{method:'DELETE',headers:{'Content-Type':'application/json'},body:JSON.stringify({id})});
+  loadAppliances();
+}
+
+async function runAudit(){
+  const btn=event.target;btn.disabled=true;btn.innerHTML='<span class="spin"></span> Auditing...';
+  try{
+    const r=await fetch('/api/ai/audit',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({api_key:S.apiKey,bill:{discom:S.bill?.discom||'',units:S.bill?.units||0,amount:S.bill?.total||0,avg_rate:S.bill?.avg_rate||6},appliances:S.appliances})});
+    const d=await r.json();
+    $('audit-out').innerHTML=`<div class="ai-box" style="margin:0"><div class="ai-hd">🤖 AI Energy Audit</div><div class="md">${md(d.result||'')}</div></div>`;
+  }catch(e){toast('Audit failed','err');}
+  finally{btn.disabled=false;btn.innerHTML='🤖 Run AI Audit';}
+}
+
+// ═══════════════════════════════════════════════════════════
+// OPTIMIZER
+// ═══════════════════════════════════════════════════════════
+function onSlide(v){$('o-lbl').textContent=v;clearTimeout(S.optT);S.optT=setTimeout(runOpt,280);}
+
+async function runOpt(){
+  const dis=$('o-discom').value,u=$('o-units').value;if(!dis)return;
+  try{
+    const r=await fetch('/api/optimizer',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({discom:dis,units:u})});
+    const d=await r.json();if(d.error)return;
+    $('opt-out').style.display='block';
+    drawSlabTable(d.slabs,parseInt(u));drawOptChart(d.scenarios,d.crossings);drawSavTable(d.scenarios);
+  }catch(e){}
+}
+
+function drawSlabTable(slabs,cu){
+  let rem=cu,html=`<table class="tbl"><thead><tr><th>Slab</th><th>Rate</th><th>Units Used</th><th>Charge</th></tr></thead><tbody>`;
+  slabs.forEach(s=>{
+    const inS=Math.max(0,Math.min(rem,s.t-s.f)),act=cu>s.f&&cu<=s.t;rem-=inS;
+    html+=`<tr class="${act?'cur-slab':''}"><td>${s.f}–${s.t<99999?s.t:'∞'} units ${act?'<span class="pill pp" style="font-size:.6rem">Current</span>':''}</td><td>₹${s.r}/unit</td><td>${inS>0?inS.toFixed(1):'—'}</td><td>${inS>0?fmtR(inS*s.r):'—'}</td></tr>`;
+  });
+  $('slab-tbl').innerHTML=html+'</tbody></table>';
+}
+
+function drawOptChart(sc,crossings){
+  dc('opt');
+  const annotations={};
+  (crossings||[]).forEach((c,i)=>{
+    const closest=sc.reduce((a,b)=>Math.abs(b.units-c)<Math.abs(a.units-c)?b:a);
+    annotations['line'+i]={type:'line',xMin:sc.indexOf(closest),xMax:sc.indexOf(closest),borderColor:'rgba(245,158,11,.5)',borderWidth:1.5,borderDash:[4,3]};
+  });
+  S.charts.opt=new Chart($('cOpt').getContext('2d'),{type:'line',
+    data:{labels:sc.map(s=>s.change_pct+'%'),datasets:[{label:'Bill (₹)',data:sc.map(s=>s.amount),borderColor:'#FF6B35',backgroundColor:'rgba(255,107,53,.07)',borderWidth:2,pointBackgroundColor:sc.map(s=>s.change_pct===0?'#FF6B35':'rgba(255,107,53,.3)'),pointRadius:sc.map(s=>s.change_pct===0?7:3),tension:.4,fill:true}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>'₹'+fmtN(v)}}}}});
+}
+
+function drawSavTable(sc){
+  const base=sc.find(s=>s.change_pct===0);
+  let html=`<table class="tbl"><thead><tr><th>Change</th><th>Units</th><th>Bill</th><th>vs Current</th><th>Avg Rate</th></tr></thead><tbody>`;
+  sc.filter(s=>[-20,-10,0,10,20,50].includes(s.change_pct)).forEach(s=>{
+    const diff=base?s.amount-base.amount:0,isBase=s.change_pct===0;
+    html+=`<tr ${isBase?'class="cur-slab"':''}><td>${s.change_pct>0?'+':''}${s.change_pct}% ${isBase?'<span class="pill pp" style="font-size:.6rem">Current</span>':''}</td><td>${s.units} kWh</td><td>${fmtR(s.amount)}</td><td style="color:${diff<0?'var(--te)':diff>0?'var(--da)':'var(--mu)'}">${isBase?'—':diff<0?'↓ Save '+fmtR(Math.abs(diff)):'↑ Extra '+fmtR(diff)}</td><td>₹${s.avg_rate.toFixed(2)}/unit</td></tr>`;
+  });
+  $('sav-tbl').innerHTML=html+'</tbody></table>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// TARIFF COMPARE
+// ═══════════════════════════════════════════════════════════
+function runCompare(){
+  const u=parseFloat($('cmp-units').value);
+  if(!u||u<=0){$('cmp-out').style.display='none';return;}
+  clearTimeout(S.cmpT);S.cmpT=setTimeout(()=>doCompare(u),400);
+}
+
+async function doCompare(u){
+  try{
+    const r=await fetch('/api/ai/compare-tariffs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:S.apiKey,units:u})});
+    const d=await r.json();
+    const result=d.result;
+    if(!result?.comparison)return;
+    $('cmp-out').style.display='block';
+    const comp=result.comparison;
+    const maxAmt=Math.max(...comp.map(c=>c.total));
+    $('cmp-best').textContent='Cheapest: '+comp[0].name;
+    $('cmp-bars').innerHTML=comp.map((c,i)=>{
+      const pct=Math.round(c.total/maxAmt*100);
+      const colors=['#00D4AA','#4A90E2','#FF6B35','#9B59B6','#F59E0B','#EF4444','#06B6D4','#8B5CF6','#F97316','#10B981'];
+      return `<div class="cmp-bar-wrap"><div class="cmp-bar-name">${c.name}</div><div class="cmp-bar-bg"><div class="cmp-bar-fill" style="width:${pct}%;background:${colors[i%colors.length]}"><span class="cmp-bar-label">${c.city}</span></div><span class="cmp-bar-val">${fmtR(c.total)}</span></div></div>`;
+    }).join('');
+    dc('cmp');
+    const colors2=['#00D4AA','#4A90E2','#FF6B35','#9B59B6','#F59E0B','#EF4444','#06B6D4','#8B5CF6','#F97316','#10B981'];
+    S.charts.cmp=new Chart($('cCmp').getContext('2d'),{type:'bar',data:{labels:comp.map(c=>c.name.split(' ')[0]),datasets:[{data:comp.map(c=>c.total),backgroundColor:colors2.map(c=>c+'88'),borderColor:colors2,borderWidth:1.5,borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'},ticks:{font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{callback:v=>'₹'+fmtN(v)}}}}});
+    $('cmp-insight').innerHTML=md(result.insight||'');
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+// WHAT-IF
+// ═══════════════════════════════════════════════════════════
+function updateWiUnits(){
+  const type=$('wi-type').value;
+  const units=WI_UNITS[type]||0;
+  $('wi-units').value=units;
+  $('wi-custom-wrap').style.display=type==='Custom'?'block':'none';
+  if(units!==0)runWhatIf();
+}
+
+async function runWhatIf(){
+  if(!S.bill){toast('Load a bill first to see impact','warn');return;}
+  const type=$('wi-type').value,u=parseFloat($('wi-units').value);
+  if(isNaN(u))return;
+  try{
+    const r=await fetch('/api/ai/whatif',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({api_key:S.apiKey,bill:{discom:S.bill.discom,units:S.bill.units,amount:S.bill.total,avg_rate:S.bill.avg_rate},scenario:{type,extra_units:u}})});
+    const d=await r.json();const res=d.result;
+    const isPos=res.delta>0,isNeg=res.delta<0;
+    $('wi-result').innerHTML=`
+      <div class="g2" style="gap:12px">
+        <div><div class="sr"><div class="sl">Current Units</div><div class="sv">${S.bill.units} kWh</div></div><div class="sr"><div class="sl">New Units</div><div class="sv">${res.new_units} kWh</div></div><div class="sr"><div class="sl">Current Bill</div><div class="sv">${fmtR(S.bill.total)}</div></div><div class="sr"><div class="sl">New Estimated Bill</div><div class="sv" style="color:${isPos?'var(--da)':'var(--te)'}">${fmtR(res.new_amount)}</div></div></div>
+        <div style="display:flex;flex-direction:column;justify-content:center;align-items:center;padding:16px;background:${isPos?'rgba(239,68,68,.07)':isNeg?'rgba(0,212,170,.07)':'rgba(255,255,255,.03)'};border-radius:var(--r);border:1px solid ${isPos?'rgba(239,68,68,.25)':isNeg?'rgba(0,212,170,.25)':'var(--bo)'}">
+          <div style="font-size:.72rem;color:var(--mu);margin-bottom:5px">Monthly Impact</div>
+          <div class="wi-delta ${isPos?'positive':isNeg?'negative':''}">${res.delta>=0?'+':''}${fmtR(res.delta)}</div>
+          <div style="font-size:.75rem;color:var(--mu);margin-top:4px">per month</div>
+        </div>
+      </div>`;
+    $('wi-ai').style.display='block';$('wi-ai-body').innerHTML=md(res.analysis||'');
+  }catch(e){}
+}
+
+// ═══════════════════════════════════════════════════════════
+// CARBON
+// ═══════════════════════════════════════════════════════════
+async function runCarbon(){
+  if(!S.bill){toast('Load a bill first','warn');return;}
+  const btn=event.target;btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  try{
+    const r=await fetch('/api/ai/carbon',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:S.apiKey,units:S.bill.units,discom:S.bill.discom})});
+    const d=await r.json();const res=d.result;
+    $('carbon-empty').style.display='none';$('carbon-content').style.display='block';
+    $('c-kg').textContent=res.kg;
+    $('c-trees').textContent=`🌳 ${res.trees} trees needed to offset annually`;
+    $('c-equiv').textContent=Math.round(res.kg*4.6);// avg car 216g/km
+    $('c-solar').textContent=Math.ceil(res.kg/30)+'kW';
+    const tips=res.tips||[];
+    $('carbon-tips').innerHTML=tips.length?tips.map((t,i)=>`<div class="sr"><div class="sl">Tip ${i+1}</div><div class="sv" style="color:var(--te);text-align:right;max-width:70%">${t}</div></div>`).join(''):'<div style="color:var(--mu);font-size:.84rem">Add your API key for personalised green tips.</div>';
+  }catch(e){toast('Carbon calc failed','err');}
+  finally{btn.disabled=false;btn.innerHTML='🌿 Calculate';}
+}
+
+// ═══════════════════════════════════════════════════════════
+// BENCHMARK
+// ═══════════════════════════════════════════════════════════
+async function loadBench(){
+  const city=$('b-city').value,ht=$('b-type').value,myU=parseFloat($('b-units').value)||0;
+  try{
+    const r=await fetch(`/api/benchmark?city=${encodeURIComponent(city)}&home_type=${encodeURIComponent(ht)}`);
+    const resp=await r.json();if(!resp.data)return;
+    const d=resp.data;drawGauge(myU,d);drawDistChart(myU,d);drawBStats(myU,d);
+  }catch(e){}
+}
+
+function drawGauge(myU,d){
+  let pct=50;
+  if(myU>0){
+    if(myU<=d.percentile_25)pct=10+15*(myU/d.percentile_25);
+    else if(myU<=d.percentile_50)pct=25+25*(myU-d.percentile_25)/(d.percentile_50-d.percentile_25);
+    else if(myU<=d.percentile_75)pct=50+25*(myU-d.percentile_50)/(d.percentile_75-d.percentile_50);
+    else pct=75+20*Math.min(1,(myU-d.percentile_75)/d.percentile_75);
+    pct=Math.min(99,Math.round(pct));
+  }
+  const canvas=$('cGauge'),ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const cx=canvas.width/2,cy=canvas.height-8,R=78;
+  const col=pct<40?'#00D4AA':pct<70?'#F59E0B':'#EF4444';
+  ctx.beginPath();ctx.arc(cx,cy,R,Math.PI,0);ctx.strokeStyle='rgba(255,255,255,.07)';ctx.lineWidth=13;ctx.lineCap='round';ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,R,Math.PI,Math.PI+Math.PI*(pct/100));ctx.strokeStyle=col;ctx.stroke();
+  ctx.fillStyle=col;ctx.font='bold 25px DM Sans';ctx.textAlign='center';ctx.fillText(pct+'th',cx,cy-26);
+  ctx.fillStyle='#6B7A99';ctx.font='12px DM Sans';ctx.fillText('percentile',cx,cy-9);
+  $('pct-lbl').innerHTML=myU>0?(pct<50?'🟢 Below average — efficient!':pct<75?'🟡 Above city average':'🔴 High usage'):'Enter your units above';
+}
+
+function drawDistChart(myU,d){
+  dc('dist');
+  const ds=[{label:'City Distribution',data:[d.percentile_25,d.avg_units,d.percentile_75],backgroundColor:['rgba(0,212,170,.55)','rgba(74,144,226,.55)','rgba(239,68,68,.55)'],borderColor:['#00D4AA','#4A90E2','#EF4444'],borderWidth:1.5,borderRadius:5}];
+  if(myU>0)ds.push({type:'line',label:'Your Usage',data:[myU,myU,myU],borderColor:'#FF6B35',borderWidth:2,borderDash:[6,3],pointRadius:0,fill:false});
+  S.charts.dist=new Chart($('cDist').getContext('2d'),{type:'bar',data:{labels:['25th Pct','Average','75th Pct'],datasets:ds},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{font:{size:11}}}},scales:{x:{grid:{color:'rgba(255,255,255,.04)'}},y:{grid:{color:'rgba(255,255,255,.04)'}}}}});
+}
+
+function drawBStats(myU,d){
+  const sav=myU>d.avg_units?Math.round((myU-d.avg_units)*6):0;
+  $('b-stats').innerHTML=`<div class="g3"><div><div class="sr"><div class="sl">City Average</div><div class="sv">${d.avg_units} kWh/mo</div></div><div class="sr"><div class="sl">25th Percentile</div><div class="sv">${d.percentile_25} kWh</div></div><div class="sr"><div class="sl">75th Percentile</div><div class="sv">${d.percentile_75} kWh</div></div></div><div><div class="sr"><div class="sl">Avg Bill</div><div class="sv">${fmtR(d.avg_amount)}</div></div><div class="sr"><div class="sl">Home Type</div><div class="sv">${d.home_type}</div></div><div class="sr"><div class="sl">City</div><div class="sv">${d.city}</div></div></div><div style="display:flex;align-items:center"><div style="width:100%;padding:14px;background:${sav>0?'rgba(0,212,170,.07)':'rgba(255,107,53,.07)'};border-radius:var(--r);border:1px solid ${sav>0?'rgba(0,212,170,.2)':'rgba(255,107,53,.2)'}"><div style="font-size:.66rem;color:var(--mu);text-transform:uppercase;letter-spacing:.8px;margin-bottom:4px">Savings Potential</div><div style="font-size:1.45rem;font-weight:800;color:${sav>0?'var(--te)':'var(--pr)'}">${sav>0?fmtR(sav)+'/mo':'Efficient! 🎉'}</div><div style="font-size:.7rem;color:var(--mu);margin-top:2px">${sav>0?'if you reach city average':'Below city average'}</div></div></div></div>`;
+}
+
+// ═══════════════════════════════════════════════════════════
+// AI CHAT
+// ═══════════════════════════════════════════════════════════
+function ckd(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
+function ars(el){el.style.height='auto';el.style.height=Math.min(el.scrollHeight,120)+'px';}
+function qp(t){$('chat-in').value=t;sendChat();}
+
+async function sendChat(){
+  const inp=$('chat-in'),t=inp.value.trim();if(!t)return;
+  inp.value='';inp.style.height='auto';
+  S.msgs.push({role:'user',content:t});addMsg('u',t);
+  const btn=$('chat-btn');btn.disabled=true;btn.innerHTML='<span class="spin"></span>';
+  const tid='ty-'+Date.now();addMsg('a','<span class="spin" style="width:14px;height:14px;border-width:2px"></span>',tid);
+  try{
+    const bCtx=S.bill?{discom:S.bill.discom,units:S.bill.units,amount:S.bill.total||S.bill.amount_due,avg_rate:S.bill.avg_rate,month:S.bill.month||S.bill.billing_month}:{};
+    const r=await fetch('/api/ai/chat',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({api_key:S.apiKey,messages:S.msgs,bill_context:bCtx,history:S.hist})});
+    const d=await r.json();
+    $(tid)?.remove();
+    const rep=d.response||'Sorry, I could not respond right now.';
+    S.msgs.push({role:'assistant',content:rep});addMsg('a',md(rep));
+  }catch(e){$(tid)?.remove();addMsg('a','Connection error. Please try again.');}
+  finally{btn.disabled=false;btn.innerHTML='Send';}
+}
+
+function addMsg(role,html,id){
+  const c=$('chat-msgs'),el=document.createElement('div');
+  el.className='msg '+role;if(id)el.id=id;
+  el.innerHTML=`<div class="bubble">${html}</div><div class="msg-t">BillSense AI · ${now()}</div>`;
+  c.appendChild(el);c.scrollTop=c.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════════════
+// SCHEDULE (called from AI tools tab)
+// ═══════════════════════════════════════════════════════════
+async function runSchedule(){
+  if(!S.bill){toast('Load a bill first','warn');return;}
+  try{
+    const r=await fetch('/api/ai/schedule',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({api_key:S.apiKey,bill:{discom:S.bill.discom,units:S.bill.units,amount:S.bill.total,avg_rate:S.bill.avg_rate},appliances:S.appliances})});
+    const d=await r.json();const res=d.result;
+    if(!res?.schedule)return;
+    return res;
+  }catch(e){return null;}
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+// Show API warning if no key
+if(!S.apiKey) $('api-warn').classList.add('on');
+updateWiUnits();
+loadHistory();
+loadBench();
+loadAppliances();
+</script>
+</body>
+</html>
