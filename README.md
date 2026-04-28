@@ -3,9 +3,6 @@
 BillSense is a web app that helps Indian households understand, track, 
 and reduce their electricity bills using AI.
 
-## 🔗 Live Demo
-[billsense.onrender.com](https://billsense.onrender.com)
-
 ## 📸 What It Does
 
 - 📄 **Upload your electricity bill** (PDF) — auto-extracts units, amount, DISCOM
